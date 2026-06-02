@@ -9,7 +9,7 @@ import { User, Mail, BellOff, Bookmark, Save, Sparkles, Shield, MapPin, LogOut }
 import { motion } from 'motion/react';
 
 export const Profile: React.FC = () => {
-  const { users, currentUser, setCurrentUser, logoutUser, showToast } = useApp();
+  const { users, currentUser, updateCurrentUser, logoutUser, showToast } = useApp();
 
   if (!currentUser) return null;
 
@@ -24,30 +24,14 @@ export const Profile: React.FC = () => {
   // Avatar presets
   const avatarColors = ['#378ADD', '#1D9E75', '#D4537E', '#BA7517', '#533AB7', '#639922', '#E24B4A'];
 
-  const handleProfileSave = (e: React.FormEvent) => {
+  const handleProfileSave = async (e: React.FormEvent) => {
     e.preventDefault();
     const trimmedName = name.trim();
-    const trimmedInit = initials.trim().toUpperCase();
-
     if (!trimmedName || trimmedName.length < 2) {
       showToast('Name must be 2 or more characters', 'error');
       return;
     }
-
-    if (!trimmedInit || trimmedInit.length < 1 || trimmedInit.length > 3) {
-      showToast('Initials must be between 1 and 3 letters', 'error');
-      return;
-    }
-
-    // Sync context profile
-    setCurrentUser({
-      ...currentUser,
-      name: trimmedName,
-      initials: trimmedInit,
-      color: color
-    });
-
-    showToast('Profile configuration saved', 'success');
+    await updateCurrentUser({ name: trimmedName, color });
   };
 
   return (

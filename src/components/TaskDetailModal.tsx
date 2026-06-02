@@ -188,7 +188,7 @@ export const TaskDetailModal: React.FC<TaskDetailModalProps> = ({ taskId, onClos
   // Get Relative date humanizer
   const formatTimeAgo = (isoStr: string) => {
     const date = new Date(isoStr);
-    const now = new Date('2026-06-02T03:23:15Z'); // Current context date
+    const now = new Date();
     const diffMs = now.getTime() - date.getTime();
     const diffSec = Math.floor(diffMs / 1000);
     const diffMin = Math.floor(diffSec / 60);

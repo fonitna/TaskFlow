@@ -24,6 +24,8 @@ interface AppContextType {
   addComment: (taskId: string, authorId: string, text: string) => Promise<void>;
   addProject: (name: string, color: string, members: string[]) => Promise<void>;
   updateProject: (id: string, name: string, color: string, members: string[]) => void;
+  updateCurrentUser: (updates: { name?: string; role?: string; color?: string }) => Promise<void>;
+  deleteProject: (id: string) => void;
   moveTask: (taskId: string, targetStatus: TaskStatus) => void;
   reorderProjects: (startIndex: number, endIndex: number) => void;
   theme: 'light' | 'dark';
@@ -190,6 +192,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     api.updateProject(id, name, color, members).catch(err => showToast(err.message, 'error'));
   };
 
+  const updateCurrentUser = async (updates: { name?: string; role?: string; color?: string }) => {
+    if (!currentUser) return;
+    const { user } = await api.updateUser(currentUser.id, updates);
+    setCurrentUser(user);
+    setUsers(prev => prev.map(u => u.id === user.id ? user : u));
+    showToast('Profile updated', 'success');
+  };
+
+  const deleteProject = (id: string) => {
+    const name = projects.find(p => p.id === id)?.name || '';
+    setProjects(prev => prev.filter(p => p.id !== id));
+    setTasks(prev => prev.filter(t => t.projectId !== id));
+    showToast(`Deleted project "${name}"`, 'info');
+    api.deleteProject(id).catch(err => showToast(err.message, 'error'));
+  };
+
   const reorderProjects = (startIndex: number, endIndex: number) => {
     setProjects(prev => {
       const result = [...prev];
@@ -218,7 +236,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       toast, showToast, closeToast,
       loginUser, registerUser, logoutUser,
       addTask, updateTask, deleteTask, addComment,
-      addProject, updateProject, moveTask, reorderProjects,
+      addProject, updateProject, deleteProject, moveTask, reorderProjects,
+      updateCurrentUser,
       theme, toggleTheme,
     }}>
       {children}

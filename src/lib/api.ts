@@ -64,6 +64,8 @@ export const api = {
 
   // Users — GET is public (no token needed)
   getUsers: () => request<{ users: ApiUser[] }>('GET', '/users'),
+  updateUser: (id: string, data: { name?: string; role?: string; color?: string }) =>
+    request<{ user: ApiUser }>('PATCH', `/users/${id}`, data),
 
   // Projects
   getProjects: () => request<{ projects: ApiProject[] }>('GET', '/projects'),

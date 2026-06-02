@@ -19,12 +19,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
   const assignee = users.find(u => u.id === task.assigneeId);
   const project = projects.find(p => p.id === task.projectId);
 
-  // Check if overdue: Current local date 2026-06-02
   const isOverdue = React.useMemo(() => {
     if (!task.dueDate || task.status === 'done') return false;
-    const taskDateStr = task.dueDate; // YYYY-MM-DD
-    const systemDateStr = '2026-06-02';
-    return taskDateStr < systemDateStr;
+    const systemDateStr = new Date().toISOString().split('T')[0];
+    return task.dueDate < systemDateStr;
   }, [task.dueDate, task.status]);
 
   const getPriorityStyles = (p: Task['priority']) => {

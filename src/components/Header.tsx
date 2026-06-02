@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileSidebar,
   onOpenGlobalSearch
 }) => {
-  const { users, currentUser, setCurrentUser, logoutUser, showToast, theme, toggleTheme } = useApp();
+  const { currentUser, logoutUser, showToast, theme, toggleTheme } = useApp();
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   
@@ -37,15 +37,6 @@ export const Header: React.FC<HeaderProps> = ({
     setNotifications(prev => prev.map(n => ({ ...n, isNew: false })));
     showToast("Clear notifications", "info");
     setShowNotificationMenu(false);
-  };
-
-  const handleSelectUser = (userId: string) => {
-    const selected = users.find(u => u.id === userId);
-    if (selected) {
-      setCurrentUser(selected);
-      showToast(`Switched active profile to ${selected.name}`, 'success');
-    }
-    setShowUserDropdown(false);
   };
 
   return (
@@ -212,44 +203,17 @@ export const Header: React.FC<HeaderProps> = ({
                   animate={{ opacity: 1, scale: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.95, y: 10 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-56 bg-[#FFFFFF] border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col"
+                  className="absolute right-0 mt-2 w-44 bg-[#FFFFFF] border border-gray-200 rounded-xl shadow-2xl z-50 overflow-hidden flex flex-col"
                 >
-                  <div className="p-3 bg-gray-55/7 bg-stone-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest border-b border-gray-150">
-                    Switch Test Profile
+                  <div className="p-3 bg-stone-50 border-b border-gray-150 text-[10px] font-bold text-gray-400 uppercase tracking-widest truncate">
+                    {currentUser.name}
                   </div>
-
-                  <div className="p-1 divide-y divide-gray-100">
-                    {users.map(u => (
-                      <button
-                        key={u.id}
-                        onClick={() => handleSelectUser(u.id)}
-                        className={`w-full text-left flex items-center gap-3 px-3 py-2 text-xs rounded-lg hover:bg-stone-50 cursor-pointer transition-colors ${
-                          u.id === currentUser.id ? 'bg-[#B5D4F4]/10 text-[#378ADD] font-semibold' : 'text-gray-700'
-                        }`}
-                      >
-                        <div
-                          className="h-6 w-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
-                          style={{ backgroundColor: u.color }}
-                        >
-                          {u.initials}
-                        </div>
-                        <div className="truncate flex-1">
-                          <p className="font-semibold leading-tight">{u.name}</p>
-                          <p className="text-[10px] text-gray-400 capitalize">{u.role}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="p-1.5 bg-rose-50/10 border-t border-gray-100">
+                  <div className="p-1.5">
                     <button
-                      onClick={() => {
-                        setShowUserDropdown(false);
-                        logoutUser();
-                      }}
+                      onClick={() => { setShowUserDropdown(false); logoutUser(); }}
                       className="w-full text-left flex items-center gap-2.5 px-3 py-2 text-xs text-[#E24B4A] hover:bg-rose-50/50 rounded-lg cursor-pointer font-bold transition-colors"
                     >
-                      <LogOut className="h-4 w-4 text-[#E24B4A] shrink-0" />
+                      <LogOut className="h-4 w-4 shrink-0" />
                       <span>Sign Out Session</span>
                     </button>
                   </div>

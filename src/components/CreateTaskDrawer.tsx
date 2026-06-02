@@ -111,7 +111,8 @@ export const CreateTaskDrawer: React.FC<CreateTaskDrawerProps> = ({
     setDueDate(dateVal);
 
     if (dateVal) {
-      const today = new Date('2026-06-02T00:00:00Z');
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const selected = new Date(`${dateVal}T00:00:00Z`);
       if (selected < today) {
         setDueDateWarning('Warning: Due date is in the past!');

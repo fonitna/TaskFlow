@@ -44,9 +44,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenTask, onOpenQuickAdd
     return { total, todo, inProgress, inReview, done };
   }, [myTasks]);
 
-  // Overdue highlights: system clock is 2026-06-02
   const overdueTasks = React.useMemo(() => {
-    const systemDateStr = '2026-06-02';
+    const systemDateStr = new Date().toISOString().split('T')[0];
     return myTasks.filter(t => t.dueDate && t.status !== 'done' && t.dueDate < systemDateStr);
   }, [myTasks]);
 
@@ -97,7 +96,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ onOpenTask, onOpenQuickAdd
             <Smile className="h-6 w-6 text-amber-500 hover:scale-110 transition-transform cursor-pointer" />
           </h1>
           <p className="text-xs text-slate-400">
-            Good day! Review your workload details. Relative calendar date: <span className="font-semibold text-slate-600">June 2, 2026</span>
+            Good day! Review your workload details. Relative calendar date: <span className="font-semibold text-slate-600">{new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
           </p>
         </div>
 
