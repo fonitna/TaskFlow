@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { Search, Bell, Menu, Sparkles, LogOut, ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -62,12 +63,12 @@ export const Header: React.FC<HeaderProps> = ({
         </button>
 
         {/* Small Screen Brand Logo when sidebar offf-canvas hidden */}
-        <div className="flex items-center gap-1.5 xs:hidden">
+        <Link to="/" className="flex items-center gap-1.5 xs:hidden cursor-pointer hover:opacity-90 active:scale-95 transition-all">
           <div className="h-7 w-7 rounded bg-[#378ADD] flex items-center justify-center text-white font-bold">
             <Sparkles className="h-4 w-4" />
           </div>
           <span className="text-sm font-bold tracking-tight text-gray-900">TaskFlow</span>
-        </div>
+        </Link>
 
         {/* Search trigger button mimic */}
         <button
