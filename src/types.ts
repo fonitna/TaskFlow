@@ -9,6 +9,7 @@ export interface User {
   initials: string;
   color: string;
   role: string;
+  email?: string;
 }
 
 export interface Project {

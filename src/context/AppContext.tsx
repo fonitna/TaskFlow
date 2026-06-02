@@ -1,11 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, Project, Task, Comment, TaskStatus, TaskPriority } from '../types';
-import { USERS, loadState, saveState } from '../data';
+import { api, setToken, clearToken, ApiComment } from '../lib/api';
 
 interface AppContextType {
   users: User[];
@@ -13,96 +8,42 @@ interface AppContextType {
   tasks: Task[];
   comments: Comment[];
   currentUser: User | null;
-  setCurrentUser: (u: User | null) => void;
+  isLoading: boolean;
   toast: { message: string; type: 'success' | 'error' | 'info' } | null;
   showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
   closeToast: () => void;
+  loginUser: (email: string, password: string) => Promise<void>;
+  registerUser: (name: string, email: string, password: string, role: string, color: string) => Promise<void>;
+  logoutUser: () => void;
   addTask: (task: {
-    projectId: string;
-    title: string;
-    description?: string;
-    status: TaskStatus;
-    priority: TaskPriority;
-    assigneeId?: string;
-    dueDate?: string;
-    labels: string[];
-  }) => Task;
+    projectId: string; title: string; description?: string; status: TaskStatus;
+    priority: TaskPriority; assigneeId?: string; dueDate?: string; labels: string[];
+  }) => Promise<void>;
   updateTask: (task: Task) => void;
   deleteTask: (taskId: string) => void;
-  addComment: (taskId: string, authorId: string, text: string) => void;
-  addProject: (name: string, color: string, members: string[]) => Project;
+  addComment: (taskId: string, authorId: string, text: string) => Promise<void>;
+  addProject: (name: string, color: string, members: string[]) => Promise<void>;
   updateProject: (id: string, name: string, color: string, members: string[]) => void;
   moveTask: (taskId: string, targetStatus: TaskStatus) => void;
   reorderProjects: (startIndex: number, endIndex: number) => void;
-  registerUser: (name: string, role: string, color: string) => User;
-  logoutUser: () => void;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+function mapComment(c: ApiComment): Comment {
+  return { id: c.id, taskId: c.taskId, authorId: c.author.id, text: c.text, createdAt: c.createdAt };
+}
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [users, setUsers] = useState<User[]>(() => {
-    try {
-      const cached = localStorage.getItem('taskflow_users');
-      return cached ? JSON.parse(cached) : USERS;
-    } catch {
-      return USERS;
-    }
-  });
-
-  const [currentUser, setCurrentUserInternal] = useState<User | null>(() => {
-    try {
-      const cached = localStorage.getItem('taskflow_current_user');
-      return cached ? JSON.parse(cached) : null;
-    } catch {
-      return null;
-    }
-  });
-
-  const [state, setState] = useState(() => loadState());
+  const [users, setUsers] = useState<User[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
-
-  const setCurrentUser = (user: User | null) => {
-    setCurrentUserInternal(user);
-    if (user) {
-      localStorage.setItem('taskflow_current_user', JSON.stringify(user));
-    } else {
-      localStorage.removeItem('taskflow_current_user');
-    }
-  };
-
-  const registerUser = (name: string, role: string, color: string) => {
-    const initials = name
-      .split(' ')
-      .map(n => n[0])
-      .slice(0, 3)
-      .join('')
-      .toUpperCase() || 'UN';
-
-    const newUser: User = {
-      id: `u_${Date.now()}`,
-      name,
-      initials,
-      color,
-      role
-    };
-
-    const updatedUsers = [...users, newUser];
-    setUsers(updatedUsers);
-    localStorage.setItem('taskflow_users', JSON.stringify(updatedUsers));
-    
-    // Auto login
-    setCurrentUser(newUser);
-    showToast(`Welcome to TaskFlow, ${name}! Your account was registered.`, 'success');
-    return newUser;
-  };
-
-  const logoutUser = () => {
-    setCurrentUser(null);
-    showToast('Logged out successfully', 'info');
-  };
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     try {
@@ -113,201 +54,172 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   });
 
   useEffect(() => {
-    try {
-      localStorage.setItem('taskflow_theme', theme);
-    } catch {}
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    try { localStorage.setItem('taskflow_theme', theme); } catch {}
+    document.documentElement.classList.toggle('dark', theme === 'dark');
   }, [theme]);
 
-  const toggleTheme = () => {
-    setTheme(prev => prev === 'light' ? 'dark' : 'light');
-  };
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
-  // Auto-dismiss toast
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => {
-        setToast(null);
-      }, 3000);
-      return () => clearTimeout(timer);
+      const t = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(t);
     }
   }, [toast]);
-
-  // Save state on any change
-  useEffect(() => {
-    saveState(state.projects, state.tasks, state.comments);
-  }, [state]);
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
     setToast({ message, type });
   };
-
   const closeToast = () => setToast(null);
 
-  const addTask = (taskInput: {
-    projectId: string;
-    title: string;
-    description?: string;
-    status: TaskStatus;
-    priority: TaskPriority;
-    assigneeId?: string;
-    dueDate?: string;
-    labels: string[];
-  }) => {
-    const newTask: Task = {
-      ...taskInput,
-      id: `t_${Date.now()}`,
-      commentCount: 0,
-      createdAt: new Date().toISOString().split('T')[0]
+  // Load all app data after authentication
+  const loadAppData = useCallback(async () => {
+    const [usersRes, projectsRes, tasksRes, commentsRes] = await Promise.all([
+      api.getUsers(),
+      api.getProjects(),
+      api.getTasks(),
+      api.getAllComments(),
+    ]);
+    setUsers(usersRes.users);
+    setProjects(projectsRes.projects as Project[]);
+    setTasks(tasksRes.tasks as Task[]);
+    setComments(commentsRes.comments.map(mapComment));
+  }, []);
+
+  // Restore session on mount
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const { user } = await api.me();
+        setCurrentUser(user);
+        await loadAppData();
+      } catch {
+        clearToken();
+      } finally {
+        setIsLoading(false);
+      }
     };
+    init();
+  }, [loadAppData]);
 
-    setState(prev => ({
-      ...prev,
-      tasks: [...prev.tasks, newTask]
-    }));
+  // ---- Auth ----
 
-    showToast(`Task "${newTask.title.substring(0, 20)}${newTask.title.length > 20 ? '...' : ''}" created`, 'success');
-    return newTask;
+  const loginUser = async (email: string, password: string) => {
+    const { token, user } = await api.login(email, password);
+    setToken(token);
+    setCurrentUser(user);
+    await loadAppData();
+    showToast(`Welcome back, ${user.name}!`, 'success');
+  };
+
+  const registerUser = async (name: string, email: string, password: string, role: string, color: string) => {
+    const { token, user } = await api.register(name, email, password, role, color);
+    setToken(token);
+    setCurrentUser(user);
+    await loadAppData();
+    showToast(`Welcome to TaskFlow, ${user.name}!`, 'success');
+  };
+
+  const logoutUser = () => {
+    clearToken();
+    setCurrentUser(null);
+    setUsers([]);
+    setProjects([]);
+    setTasks([]);
+    setComments([]);
+    showToast('Logged out successfully', 'info');
+  };
+
+  // ---- Tasks ----
+
+  const addTask = async (input: {
+    projectId: string; title: string; description?: string; status: TaskStatus;
+    priority: TaskPriority; assigneeId?: string; dueDate?: string; labels: string[];
+  }) => {
+    const { task } = await api.createTask(input);
+    setTasks(prev => [...prev, task as Task]);
+    showToast(`Task "${task.title.substring(0, 20)}${task.title.length > 20 ? '…' : ''}" created`, 'success');
   };
 
   const updateTask = (updated: Task) => {
-    setState(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(t => t.id === updated.id ? updated : t)
-    }));
+    setTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
+    api.updateTask(updated.id, {
+      title: updated.title,
+      description: updated.description,
+      status: updated.status,
+      priority: updated.priority,
+      assigneeId: updated.assigneeId ?? null,
+      dueDate: updated.dueDate ?? null,
+      labels: updated.labels,
+    }).catch(err => showToast(err.message, 'error'));
   };
 
   const deleteTask = (taskId: string) => {
-    setState(prev => {
-      const taskToDelete = prev.tasks.find(t => t.id === taskId);
-      const taskName = taskToDelete?.title || '';
-      const updatedTasks = prev.tasks.filter(t => t.id !== taskId);
-      const updatedComments = prev.comments.filter(c => c.taskId !== taskId);
-      
-      showToast(`Deleted task "${taskName.substring(0, 20)}"`, 'info');
-
-      return {
-        ...prev,
-        tasks: updatedTasks,
-        comments: updatedComments
-      };
-    });
-  };
-
-  const addComment = (taskId: string, authorId: string, text: string) => {
-    const newComment: Comment = {
-      id: `c_${Date.now()}`,
-      taskId,
-      authorId,
-      text,
-      createdAt: new Date().toISOString()
-    };
-
-    setState(prev => {
-      // Update comment count on task
-      const updatedTasks = prev.tasks.map(t => {
-        if (t.id === taskId) {
-          return { ...t, commentCount: t.commentCount + 1 };
-        }
-        return t;
-      });
-
-      return {
-        ...prev,
-        comments: [...prev.comments, newComment],
-        tasks: updatedTasks
-      };
-    });
-  };
-
-  const addProject = (name: string, color: string, members: string[]) => {
-    const newProj: Project = {
-      id: `p_${Date.now()}`,
-      name,
-      color,
-      members: members.length === 0 ? [currentUser.id] : members,
-      createdAt: new Date().toISOString().split('T')[0]
-    };
-
-    setState(prev => ({
-      ...prev,
-      projects: [...prev.projects, newProj]
-    }));
-
-    showToast(`Created project "${name}"`, 'success');
-    return newProj;
-  };
-
-  const updateProject = (id: string, name: string, color: string, members: string[]) => {
-    setState(prev => ({
-      ...prev,
-      projects: prev.projects.map(p => p.id === id ? { ...p, name, color, members } : p)
-    }));
-    showToast(`Updated project "${name}"`, 'success');
+    const taskName = tasks.find(t => t.id === taskId)?.title || '';
+    setTasks(prev => prev.filter(t => t.id !== taskId));
+    setComments(prev => prev.filter(c => c.taskId !== taskId));
+    showToast(`Deleted task "${taskName.substring(0, 20)}"`, 'info');
+    api.deleteTask(taskId).catch(err => showToast(err.message, 'error'));
   };
 
   const moveTask = (taskId: string, targetStatus: TaskStatus) => {
-    setState(prev => {
-      const task = prev.tasks.find(t => t.id === taskId);
-      if (!task) return prev;
-      if (task.status === targetStatus) return prev;
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: targetStatus } : t));
+    api.moveTask(taskId, targetStatus).catch(err => showToast(err.message, 'error'));
+  };
 
-      const updatedTasks = prev.tasks.map(t => {
-        if (t.id === taskId) {
-          return { ...t, status: targetStatus };
-        }
-        return t;
-      });
+  // ---- Comments ----
 
-      return {
-        ...prev,
-        tasks: updatedTasks
-      };
-    });
+  const addComment = async (taskId: string, _authorId: string, text: string) => {
+    const { comment } = await api.createComment(taskId, text);
+    setComments(prev => [...prev, mapComment(comment)]);
+    setTasks(prev => prev.map(t => t.id === taskId ? { ...t, commentCount: t.commentCount + 1 } : t));
+  };
+
+  // ---- Projects ----
+
+  const addProject = async (name: string, color: string, members: string[]) => {
+    const ids = members.length === 0 && currentUser ? [currentUser.id] : members;
+    const { project } = await api.createProject(name, color, ids);
+    setProjects(prev => [...prev, project as Project]);
+    showToast(`Created project "${name}"`, 'success');
+  };
+
+  const updateProject = (id: string, name: string, color: string, members: string[]) => {
+    setProjects(prev => prev.map(p => p.id === id ? { ...p, name, color, members } : p));
+    showToast(`Updated project "${name}"`, 'success');
+    api.updateProject(id, name, color, members).catch(err => showToast(err.message, 'error'));
   };
 
   const reorderProjects = (startIndex: number, endIndex: number) => {
-    setState(prev => {
-      const result = Array.from(prev.projects);
-      if (startIndex < 0 || startIndex >= result.length || endIndex < 0 || endIndex >= result.length) {
-        return prev;
-      }
+    setProjects(prev => {
+      const result = [...prev];
       const [removed] = result.splice(startIndex, 1);
       result.splice(endIndex, 0, removed);
-      return {
-        ...prev,
-        projects: result
-      };
+      return result;
     });
+    api.reorderProjects(startIndex, endIndex).catch(err => showToast(err.message, 'error'));
   };
+
+  // Full-page loader during initial session restore
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#F1EFE8] dark:bg-[#121212]">
+        <div className="text-center space-y-3">
+          <div className="h-8 w-8 border-4 border-[#378ADD] border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-sm text-slate-500">Loading TaskFlow…</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <AppContext.Provider value={{
-      users: users,
-      projects: state.projects,
-      tasks: state.tasks,
-      comments: state.comments,
-      currentUser,
-      setCurrentUser,
-      toast,
-      showToast,
-      closeToast,
-      addTask,
-      updateTask,
-      deleteTask,
-      addComment,
-      addProject,
-      updateProject,
-      moveTask,
-      reorderProjects,
-      registerUser,
-      logoutUser,
-      theme,
-      toggleTheme
+      users, projects, tasks, comments, currentUser, isLoading,
+      toast, showToast, closeToast,
+      loginUser, registerUser, logoutUser,
+      addTask, updateTask, deleteTask, addComment,
+      addProject, updateProject, moveTask, reorderProjects,
+      theme, toggleTheme,
     }}>
       {children}
     </AppContext.Provider>
@@ -316,8 +228,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
 export const useApp = () => {
   const context = useContext(AppContext);
-  if (context === undefined) {
-    throw new Error('useApp must be used within an AppProvider');
-  }
+  if (context === undefined) throw new Error('useApp must be used within an AppProvider');
   return context;
 };
