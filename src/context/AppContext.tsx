@@ -36,6 +36,8 @@ interface AppContextType {
   reorderProjects: (startIndex: number, endIndex: number) => void;
   registerUser: (name: string, role: string, color: string) => User;
   logoutUser: () => void;
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -100,6 +102,29 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const logoutUser = () => {
     setCurrentUser(null);
     showToast('Logged out successfully', 'info');
+  };
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    try {
+      const cached = localStorage.getItem('taskflow_theme');
+      if (cached === 'light' || cached === 'dark') return cached;
+    } catch {}
+    return 'light';
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('taskflow_theme', theme);
+    } catch {}
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(prev => prev === 'light' ? 'dark' : 'light');
   };
 
   // Auto-dismiss toast
@@ -280,7 +305,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       moveTask,
       reorderProjects,
       registerUser,
-      logoutUser
+      logoutUser,
+      theme,
+      toggleTheme
     }}>
       {children}
     </AppContext.Provider>

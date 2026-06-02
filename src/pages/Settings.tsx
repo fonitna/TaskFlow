@@ -6,13 +6,13 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Save, Folder, Check, Trash2, Columns, Users, AlertCircle, RefreshCw } from 'lucide-react';
+import { Save, Folder, Check, Trash2, Columns, Users, AlertCircle, RefreshCw, Sun, Moon } from 'lucide-react';
 import { motion } from 'motion/react';
 
 export const Settings: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { projects, users, updateProject, showToast } = useApp();
+  const { projects, users, updateProject, showToast, theme, toggleTheme } = useApp();
 
   const activeProjId = searchParams.get('project') || '';
 
@@ -124,6 +124,50 @@ export const Settings: React.FC = () => {
         <p className="text-xs text-gray-500 mt-0.5">
           Edit project metadata, color coding, board column lists and assignees access checklists.
         </p>
+      </div>
+
+      {/* Workspace Visual Mode (Theme) card */}
+      <div className="bg-[#FFFFFF] border border-gray-200 rounded-xl p-5 shadow-3xs flex flex-wrap items-center justify-between gap-4">
+        <div className="space-y-1">
+          <h2 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+            {theme === 'light' ? (
+              <Sun className="h-4.5 w-4.5 text-amber-500" />
+            ) : (
+              <Moon className="h-4.5 w-4.5 text-[#378ADD]" />
+            )}
+            <span>Workspace Theme Mode</span>
+          </h2>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Switch between light and dark themes to optimize viewing comfort and focus.
+          </p>
+        </div>
+        
+        <div className="flex bg-stone-100 p-1 rounded-xl border border-[#E5E2D9]">
+          <button
+            type="button"
+            onClick={() => theme === 'dark' && toggleTheme()}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1.5 cursor-pointer transition-all ${
+              theme === 'light'
+                ? 'bg-white text-slate-800 shadow-2xs'
+                : 'text-stone-400 hover:text-stone-200 bg-transparent'
+            }`}
+          >
+            <Sun className="h-4 w-4 shrink-0" />
+            <span>Light</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => theme === 'light' && toggleTheme()}
+            className={`px-4 py-2 text-xs font-bold uppercase tracking-wider rounded-lg flex items-center gap-1.5 cursor-pointer transition-all ${
+              theme === 'dark'
+                ? 'bg-white text-slate-800 shadow-2xs'
+                : 'text-stone-400 hover:text-stone-700 bg-transparent'
+            }`}
+          >
+            <Moon className="h-4 w-4 shrink-0" />
+            <span>Dark</span>
+          </button>
+        </div>
       </div>
 
       {projects.length === 0 ? (

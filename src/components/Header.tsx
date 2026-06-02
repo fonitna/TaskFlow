@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-import { Search, Bell, Menu, Sparkles, LogOut, ChevronDown } from 'lucide-react';
+import { Search, Bell, Menu, Sparkles, LogOut, ChevronDown, Sun, Moon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface HeaderProps {
@@ -18,7 +18,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileSidebar,
   onOpenGlobalSearch
 }) => {
-  const { users, currentUser, setCurrentUser, logoutUser, showToast } = useApp();
+  const { users, currentUser, setCurrentUser, logoutUser, showToast, theme, toggleTheme } = useApp();
   const [showNotificationMenu, setShowNotificationMenu] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
   
@@ -93,6 +93,20 @@ export const Header: React.FC<HeaderProps> = ({
           aria-label="Global Search"
         >
           <Search className="h-4.5 w-4.5" />
+        </button>
+
+        {/* Dark/Light mode theme switch */}
+        <button
+          onClick={toggleTheme}
+          className="p-2 text-gray-500 hover:text-gray-800 hover:bg-gray-100 rounded-lg cursor-pointer transition-all active:scale-95"
+          title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          aria-label="Toggle dark mode"
+        >
+          {theme === 'light' ? (
+            <Moon className="h-4.5 w-4.5" />
+          ) : (
+            <Sun className="h-4.5 w-4.5 text-amber-500 animate-pulse" />
+          )}
         </button>
 
         {/* Notifications Popover Bell */}
