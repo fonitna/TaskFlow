@@ -1,0 +1,51 @@
+name: taskflow
+
+services:
+  # ── Backend API (Express + Prisma + SQLite) ──────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: "file:/data/taskflow.db"
+      JWT_SECRET: "taskflow-docker-jwt-secret-change-in-production"
+      PORT: "4000"
+      # Allow requests from the nginx frontend container
+      FRONTEND_URL: "http://localhost:3500"
+    volumes:
+      - taskflow-data:/data
+    networks:
+      - taskflow-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ── Frontend (Vite build served by nginx + API proxy) ────────────────────
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Empty string → BASE = "/api/v1" → nginx forwards to backend container
+        VITE_API_URL: ""
+    ports:
+      # Port 3500 avoids conflicts with FITM Atlas (3000, 8080) and TaskFlow dev (3000, 4000)
+      - "3500:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - taskflow-net
+    restart: unless-stopped
+
+volumes:
+  taskflow-data:
+    driver: local
+
+networks:
+  taskflow-net:
+    driver: bridge

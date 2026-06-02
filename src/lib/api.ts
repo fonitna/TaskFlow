@@ -1,4 +1,7 @@
-const BASE = 'http://localhost:4000/api/v1';
+// In Docker the build arg VITE_API_URL is set to "" so BASE becomes "/api/v1"
+// and nginx proxies it to the backend container.
+// In dev mode VITE_API_URL is not set so it falls back to http://localhost:4000.
+const BASE = `${import.meta.env.VITE_API_URL ?? 'http://localhost:4000'}/api/v1`;
 const TOKEN_KEY = 'taskflow_token';
 
 export function getToken(): string | null {
